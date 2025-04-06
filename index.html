@@ -1,92 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wrap and Unwrap MON Token</title>
-    <script src="https://cdn.jsdelivr.net/npm/ethers@5.6.8/dist/ethers.umd.min.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Wrap and Unwrap Tokens</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.5.0/dist/ethers.min.js"></script>
 </head>
 <body>
-    <h1>Wrap and Unwrap MON Token</h1>
-    <p>Wrap MON Token into WMON and Unwrap WMON back to MON</p>
+  <h1>Wrap and Unwrap Token with MetaMask</h1>
+  
+  <!-- Kết nối ví -->
+  <button id="connectButton">Connect Wallet</button>
+  
+  <br><br>
 
-    <div>
-        <h3>Wrap MON to WMON</h3>
-        <input type="number" id="wrapAmount" placeholder="Amount of MON to wrap">
-        <button onclick="wrapToken()">Wrap MON</button>
-    </div>
+  <!-- Tính năng Wrap và Unwrap -->
+  <button id="wrapButton" style="display:none;">Wrap Tokens</button>
+  <button id="unwrapButton" style="display:none;">Unwrap Tokens</button>
 
-    <div>
-        <h3>Unwrap WMON to MON</h3>
-        <input type="number" id="unwrapAmount" placeholder="Amount of WMON to unwrap">
-        <button onclick="unwrapToken()">Unwrap WMON</button>
-    </div>
+  <p id="status"></p>
+  
+  <script>
+    let provider, signer, userAddress;
+    
+    // Kiểm tra xem MetaMask đã được cài đặt chưa
+    if (typeof window.ethereum === 'undefined') {
+      alert('Please install MetaMask to use this feature');
+    } else {
+      const connectButton = document.getElementById('connectButton');
+      const wrapButton = document.getElementById('wrapButton');
+      const unwrapButton = document.getElementById('unwrapButton');
+      const status = document.getElementById('status');
+      
+      // Kết nối ví MetaMask
+      connectButton.addEventListener('click', async () => {
+        try {
+          // Yêu cầu kết nối MetaMask
+          await window.ethereum.request({ method: 'eth_requestAccounts' });
+          
+          // Tạo đối tượng provider từ MetaMask và lấy địa chỉ người dùng
+          provider = new ethers.providers.Web3Provider(window.ethereum);
+          signer = provider.getSigner();
+          userAddress = await signer.getAddress();
+          
+          // Hiển thị thông tin người dùng và cập nhật giao diện
+          status.innerHTML = `Connected: ${userAddress}`;
+          connectButton.style.display = 'none'; // Ẩn nút Connect Wallet
+          wrapButton.style.display = 'inline-block'; // Hiển thị nút Wrap
+          unwrapButton.style.display = 'inline-block'; // Hiển thị nút Unwrap
+        } catch (err) {
+          console.log(err);
+          status.innerHTML = 'Failed to connect wallet';
+        }
+      });
 
-    <script>
-        let provider;
-        let signer;
-        let contract;
+      // Xử lý chức năng Wrap
+      wrapButton.addEventListener('click', async () => {
+        // Thực hiện thao tác wrap token (gọi smart contract)
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS'; // Địa chỉ hợp đồng của bạn
+        const abi = [
+          // Định nghĩa ABI cho contract của bạn (chỉ cần phần wrap)
+          "function wrap(uint256 amount) public"
+        ];
         
-        // Địa chỉ của hợp đồng (thay đổi theo hợp đồng của bạn)
-        const contractAddress = "0x276e9e7e1ad77ADf29B4a14a79D732AB2261Ce8C";
+        const contract = new ethers.Contract(contractAddress, abi, signer);
 
-        // ABI của hợp đồng WMONWrapper (chỉ chứa các hàm wrap và unwrap)
-        const contractABI = [
-            "function wrap(uint256 _amountMON) public",
-            "function unwrap(uint256 _amountWMON) public"
+        try {
+          // Gọi hàm wrap của hợp đồng
+          const amount = ethers.utils.parseUnits('1', 18); // Ví dụ wrap 1 token (đảm bảo giá trị phù hợp)
+          const tx = await contract.wrap(amount);
+          await tx.wait();
+          status.innerHTML = 'Successfully wrapped tokens';
+        } catch (err) {
+          console.log(err);
+          status.innerHTML = 'Failed to wrap tokens';
+        }
+      });
+
+      // Xử lý chức năng Unwrap
+      unwrapButton.addEventListener('click', async () => {
+        // Thực hiện thao tác unwrap token (gọi smart contract)
+        const contractAddress = 'YOUR_CONTRACT_ADDRESS'; // Địa chỉ hợp đồng của bạn
+        const abi = [
+          // Định nghĩa ABI cho contract của bạn (chỉ cần phần unwrap)
+          "function unwrap(uint256 amount) public"
         ];
 
-        async function connectWallet() {
-            if (window.ethereum) {
-                provider = new ethers.providers.Web3Provider(window.ethereum);
-                await provider.send("eth_requestAccounts", []);
-                signer = provider.getSigner();
-                contract = new ethers.Contract(contractAddress, contractABI, signer);
-                console.log("Wallet connected!");
-            } else {
-                alert("MetaMask not found! Please install MetaMask.");
-            }
+        const contract = new ethers.Contract(contractAddress, abi, signer);
+
+        try {
+          // Gọi hàm unwrap của hợp đồng
+          const amount = ethers.utils.parseUnits('1', 18); // Ví dụ unwrap 1 token (đảm bảo giá trị phù hợp)
+          const tx = await contract.unwrap(amount);
+          await tx.wait();
+          status.innerHTML = 'Successfully unwrapped tokens';
+        } catch (err) {
+          console.log(err);
+          status.innerHTML = 'Failed to unwrap tokens';
         }
-
-        async function wrapToken() {
-            const wrapAmount = document.getElementById("wrapAmount").value;
-            if (wrapAmount <= 0) {
-                alert("Please enter a valid amount.");
-                return;
-            }
-
-            await connectWallet();
-
-            try {
-                const tx = await contract.wrap(ethers.utils.parseUnits(wrapAmount, 18));  // Giả sử MON có 18 chữ số thập phân
-                console.log("Transaction sent:", tx.hash);
-                await tx.wait();  // Đợi giao dịch hoàn tất
-                alert(`Successfully wrapped ${wrapAmount} MON into WMON!`);
-            } catch (error) {
-                console.error("Error wrapping MON:", error);
-                alert("Error wrapping MON.");
-            }
-        }
-
-        async function unwrapToken() {
-            const unwrapAmount = document.getElementById("unwrapAmount").value;
-            if (unwrapAmount <= 0) {
-                alert("Please enter a valid amount.");
-                return;
-            }
-
-            await connectWallet();
-
-            try {
-                const tx = await contract.unwrap(ethers.utils.parseUnits(unwrapAmount, 18));  // Giả sử WMON có 18 chữ số thập phân
-                console.log("Transaction sent:", tx.hash);
-                await tx.wait();  // Đợi giao dịch hoàn tất
-                alert(`Successfully unwrapped ${unwrapAmount} WMON into MON!`);
-            } catch (error) {
-                console.error("Error unwrapping WMON:", error);
-                alert("Error unwrapping WMON.");
-            }
-        }
-    </script>
+      });
+    }
+  </script>
 </body>
 </html>
